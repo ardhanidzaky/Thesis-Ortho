@@ -5,3 +5,5 @@
 
 # Ignore icon previews
 Icon?
+
+__pycache__
