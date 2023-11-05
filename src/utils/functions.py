@@ -1,5 +1,10 @@
 import cv2
 
+import torch
+import torchvision.models as models
+
+from .src.const import MODEL_CKP
+
 class FKGTask:
     """
     Designed to handle and prepare data for classification tasks. 
@@ -10,7 +15,7 @@ class FKGTask:
     - face_side (str): The column name representing the face side in the dataset.
     - subtask (str): The column name representing the subtask or label in the dataset.
     - dataframe (pd.DataFrame): The Pandas DataFrame containing the encoded data.
-    
+
     Attributes:
     - face_side (str): The column name representing the face side in the dataset.
     - subtask (str): The column name representing the subtask or label in the dataset.
@@ -124,3 +129,59 @@ def crop_face(image_path, target_width=300, target_height=400):
     resized_gray = cv2.cvtColor(resized_rgb, cv2.COLOR_BGR2GRAY)
 
     return resized_rgb, resized_gray
+
+def load_model_checkpoint(model, ckp_path):
+    """
+    Load a PyTorch model from a checkpoint file.
+    This function loads a pre-trained or saved PyTorch 
+    model from a checkpoint file and returns the loaded model.
+
+    Parameters:
+    - model (torch.nn.Module): The PyTorch model to be loaded.
+    - ckp_path (str): The path to the checkpoint file.
+
+    Returns:
+    - loaded_model (torch.nn.Module): The model loaded from the checkpoint.
+
+    Example Usage:
+    >>> # Load a pre-trained model from a checkpoint file
+    >>> model = load_model_checkpoint(models.resnet18(pretrained=False), 'model_checkpoint.pth')
+
+    Note:
+    - Ensure that the model architecture in the checkpoint file matches the provided `model` argument.
+    """
+    temp_model = model
+    checkpoint = torch.load(ckp_path)
+    temp_model.load_state_dict(checkpoint)
+
+    return temp_model
+
+def get_models():
+    """
+    Get a dictionary of pre-trained models.
+    This function loads and returns a dictionary of pre-trained PyTorch models, 
+    including EfficientNet B0, ShuffleNet V2, and MobileNet V2.
+
+    Returns:
+    - model_dict (dict): A dictionary with model names as keys and the corresponding pre-trained models as values.
+
+    Example Usage:
+    >>> # Get a dictionary of pre-trained models
+    >>> models_dict = get_models()
+    >>> effnet_model = models_dict['effnet']
+    >>> shufflenet_model = models_dict['shufflenet']
+    >>> mobilenet_model = models_dict['mobilenet']
+
+    Note:
+    - Make sure to import the necessary PyTorch model modules from `torchvision.models`.
+    """
+    efficientnet_b0 = load_model_checkpoint(models.efficientnet_b0(pretrained=False), MODEL_CKP['effnet'])  
+    shufflenet = load_model_checkpoint(models.shufflenet_v2_x1_0(pretrained=False), MODEL_CKP['shufflenet'])
+    mobilenet_v2 = load_model_checkpoint(models.mobilenet_v2(pretrained=False), MODEL_CKP['mobilenet'])
+
+    model_dict = {}
+    model_dict['effnet'] = efficientnet_b0
+    model_dict['shufflenet'] = shufflenet
+    model_dict['mobilenet'] = mobilenet_v2
+
+    return model_dict
