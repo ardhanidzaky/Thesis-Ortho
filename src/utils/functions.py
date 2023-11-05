@@ -24,27 +24,31 @@ def crop_face(image_path, target_width=300, target_height=400):
     """
 
     image = cv2.imread(image_path)
-    if image is None:
-        raise ValueError("Unable to load the image from the given path.")
-
-    image = cv2.resize(image, (target_width, target_height))
-    original_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-    # Load the face cascade classifier and detect faces on the image.
+    image_rb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    
+    # Search for faces on the image.
     face_cascade = cv2.CascadeClassifier("src/models/pretrained/haarcascade_frontalface.xml")
     faces = face_cascade.detectMultiScale(image, scaleFactor=1.1, minNeighbors=5)
-    if len(faces) == 0:
-        raise ValueError("No faces detected in the image.")
-
-    # Images that will be processed in this project
-    # will be ensured that it only contains 1 face.
     x, y, w, h = faces[0]
-    padding = int(max(0.15 * (x + w), 0.15 * (y + h))) # Add padding to create space.
 
-    width_scale, height_scale = target_width / w, target_height / h
-    scale = min(width_scale, height_scale)
+    # Adjust height, so it will create a 3:4 (width:height) ratio.
+    exp_ratio = 3 / 4
+    h = int(w / exp_ratio)
 
-    original_image = cv2.resize(original_image[y-padding:y+h+padding, x:x+w], None, fx=scale, fy=scale)
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # Adjust y, as a pre-caution if it 
+    # being cropped below the forehead.
+    y -= int((image.shape[0] / target_height) * 35)
+    
+    # Add padding for the height, as a pre-caution
+    # if it being cropped below the forehead.
+    if y + h > image.shape[0]:
+        minus_y = y + h - image.shape[0]
+        y -= minus_y
 
-    return original_image, gray_image
+    image_cropped = image_rb[y:y+h, x:x+w]
+    image_cropped_resized = cv2.resize(image_cropped, (target_width, target_height))
+
+    resized_rgb = image_cropped_resized
+    resized_gray = cv2.cvtColor(resized_rgb, cv2.COLOR_BGR2GRAY)
+
+    return resized_rgb, resized_gray
