@@ -1,5 +1,77 @@
 import cv2
 
+class FKGTask:
+    """
+    Designed to handle and prepare data for classification tasks. 
+    It provides methods to encode categorical labels, split data into training and validation sets, 
+    and retrieve the encoded data, making it useful for machine learning tasks.
+
+    Parameters:
+    - face_side (str): The column name representing the face side in the dataset.
+    - subtask (str): The column name representing the subtask or label in the dataset.
+    - dataframe (pd.DataFrame): The Pandas DataFrame containing the encoded data.
+    
+    Attributes:
+    - face_side (str): The column name representing the face side in the dataset.
+    - subtask (str): The column name representing the subtask or label in the dataset.
+    - dataframe (pd.DataFrame): The Pandas DataFrame containing the encoded data.
+    - encoding_dict (dict): A dictionary that maps the original class labels to their encoded values.
+    - X (pd.Series): The feature data (independent variable).
+    - y (pd.Series): The target data (dependent variable).
+
+    Methods:
+    - __init__(self, face_side, subtask, data): Initializes an instance of the FKGTask class.
+    - _get_dataframe(self, data, subtask): Encodes the categorical labels in the dataset and returns the encoded DataFrame and encoding dictionary.
+    - _get_x_and_y(self): Extracts the feature and target data from the DataFrame.
+    - get_train_test_split(self): Splits the data into training and validation sets and returns them as DataFrames.
+
+    Example Usage:
+    >>> fkg_task = FKGTask(face_side=`face_side`, subtask=`subtask`, data=my_data)
+    >>> train_data, val_data = fkg_task.get_train_test_split()
+    
+    >>>  # Train a machine learning model using the train_data
+    >>>  # Validate the model using the val_data
+
+    Note:
+    - This class is designed to work with Pandas DataFrames and assumes that the input data contains columns corresponding to the specified `face_side` and `subtask`.
+    - It uses ordinal encoding to convert categorical labels into numerical values.
+    - The class provides a convenient way to split the data into training and validation sets, maintaining the stratified distribution of the target variable.
+    """
+
+    def __init__(self, face_side, subtask, data):
+        self.face_side = face_side
+        self.subtask = subtask
+        self.dataframe, self.encoding_dict = self._get_dataframe(data, self.subtask)
+        self.X, self.y = self._get_x_and_y()
+
+    def _get_dataframe(self, data, subtask):
+        encoder = OrdinalEncoder()
+        unique_values = data[subtask][subtask].unique().reshape(-1, 1)
+        encoder.fit(unique_values)
+
+        before_val = data[subtask][subtask]
+        data[subtask][subtask] = encoder.transform(data[subtask][subtask].values.reshape(-1, 1))
+        encoding_dict = {original_class: encoded_value for original_class, encoded_value in zip(data[subtask][subtask], before_val)}
+        encoding_dict = {v: k for k, v in encoding_dict.items()}
+        
+        return data[subtask], encoding_dict
+
+    def _get_x_and_y(self):
+        X = self.dataframe[self.face_side]
+        y = self.dataframe[self.subtask]
+
+        return X, y
+
+    def get_train_test_split(self):
+        X_train, X_val, y_train, y_val = train_test_split(
+            self.X, self.y
+            , stratify=self.y
+            , test_size=0.2
+            , random_state=42
+        )
+
+        return pd.concat([X_train, y_train], axis=1), pd.concat([X_val, y_val], axis=1)
+
 def crop_face(image_path, target_width=300, target_height=400):
     """
     Crop and resize the detected face in an image.
